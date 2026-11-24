@@ -4,6 +4,15 @@ feature_id: FEAT-056
 document_type: test-design
 status: final
 automation_status: implemented
+features: [FEAT-056]
+since_solution_version: 0.1.3
+last_modified_solution_version: 0.1.3
+compatibility:
+  agent-core-java: ">=0.1.16"
+  agent-runtime-java: ">=0.1.3"
+  agent-runtime-ext-java: ">=0.1.2"
+depends_on: []
+verdict_states: [PASS, FAIL, WARN, EXCLUDED, UNSUPPORTED, NOT_OBSERVED]
 docs_baseline: docs PR 312 head 930035fa4c46624ee7109596c4781aafd20d8e5e + base 1122b6009895d67172c2a880ea23fa7a4d4a23dd；preview merge aca19b264f3ca52057dbe17b6ca9bd48d7c08590
 feature_source: 02-Code/_worktrees/docs-pr312-930035fa/develop/02-features/FEAT-056-agent-library-business-customization.md @ aca19b264f3ca52057dbe17b6ca9bd48d7c08590 sha256 B0643D32533970EC441CA848BCE20332E20820C523E23E65564E488514E16B97
 frs_source: 02-Code/_worktrees/docs-pr312-930035fa/develop/01-scenarios/FRS-056-agent-library-business-customization.md @ aca19b264f3ca52057dbe17b6ca9bd48d7c08590 sha256 365752868B4717FCA6F6E99FA73F9190620D7186370B7A1DC6F35C2E30593EC2
@@ -22,8 +31,8 @@ input_maturity: frozen-pr312-preview
 - 一句话说明：让二开方在不动原 Agent Library JAR 的情况下，为自己的应用增加 Rail/Tool，并确保每个真正执行的 Agent 对象只装配一次、失败时不带病运行。
 - 关键链路：Library JAR 交付 → 二开应用加入自定义器 → Runtime 在对象执行前回调 → 二开方调用 Core API 注册能力 → 原 A2A/REST 入口执行 → 原所有者释放对象。
 - 本期测试：先做打包/真实 A2A 主路径，再做组件和集成故障矩阵，覆盖对象身份、单次初始化、per-task 清理、Hosted 定向、Rail/Tool、护栏和日志。
-- 本期不测：旁挂/热加载、托管非默认 Agent 按任务新建、同对象并发执行、异构框架、统一 Tool API、通用副作用回滚。
-- 执行结果：47 条权威用例全部 PASS，0 skipped；27 条范围内需求全部 `covered`，无 open/degraded 缺口，`coverage_blocking=0`。通用实例扩展能力是主验收对象；MOA `0.1.1` 作为真实使用方旁证执行。
+- 本期不测（完整清单以 §1 为准）：托管（Hosted）非默认 Agent 按任务新建、旁挂扩展 JAR 与热加载、旧 Provider SPI、异构 Agent 框架、统一 Tool API、同对象并发执行、通用副作用回滚。
+- 执行结果：冻结基线 run 权威执行 47 个测试方法全部 PASS、0 skipped（矩阵 46 个用例 ID，C24 退休由 C32 替代；方法与用例为多对多映射——C12/C13、C14/C15 各共用一个方法，部分用例含多方法映射，映射以各卡「自动化落点」列为准；run 留证见 §8）；27 条范围内需求全部 `covered`，无 open/degraded 缺口，`coverage_blocking=0`。通用实例扩展能力是主验收对象；MOA `0.1.1` 作为真实使用方旁证执行。
 - 详细预览：`FEAT-056-需求与测试预览.md`
 - 本期范围：`20261012-FEAT-056-变更包范围卡.md`
 - 输入成熟度：`frozen-pr312-preview`；设计、实现、执行和覆盖均已收口。
@@ -35,7 +44,8 @@ input_maturity: frozen-pr312-preview
 - L2 实现说明：`Feat-Func-056-agent-lib-jar-secondary-development.md`；PR312 已统一 Feature/FRS 链接。
 - 已确认裁决：FRS DEC-01～11；FRS §3.1 五格部署范围。
 - 范围内：FR-01～16 及 AC-01～16 子项；Rail/Tool；非托管 singleton/per-task、托管复用、托管默认 Agent 显式 per-task；启动、任务、护栏失败；释放和日志。
-- 范围外：托管非默认 Agent 按任务、热加载、旧 SPI、异构框架、统一 Tool API、同对象并发、通用回滚。
+- 范围外：托管（Hosted）非默认 Agent 按任务、旁挂扩展 JAR 与热加载、旧 Provider SPI、异构 Agent 框架、统一 Tool API、同对象并发执行、通用副作用回滚。
+- 术语说明：「托管/非托管」即 Hosted / non-Hosted（是否由平台托管定义装配），同义；统计以用例 ID 为准。
 - 原确认项：DQ-056-01～03、L2Q-056-01～02 已由 PR292/PR312 和本轮 C22 执行关闭。
 
 ## 2. SUT 适用性
@@ -134,15 +144,17 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 
 2026-11-13 评审修订新增 C45～C47，同日以 component 层实现并执行：3/3 PASS（AgentInstanceCustomizerGuardrailFailureTest 1 条 + AgentInstanceCustomizerToolIdentityTest 2 条，WSL 离线 Maven + 共享仓库，本轮 surefire XML 留证）。既有 C01～C44 记录不变。
 
+2026-11-24 基线迁移复跑：integration 层整体 16/16 PASS（含 C30 `common@286184389` 锚复跑；官方示例按 d4044eeb 官方 commit 重建构建），run 留证=`_agent/20261124_FEAT056_rerun/evidence/runs/`。
+
 ### 4.2 历史经验承接
 
 来源 manifest：`FEAT-056-review-deliverables.json`。
 
 | lesson ID | 历史经验/漏检 | 本期风险 | 用例族 | case ID | 证据要求 |
 |---|---|---|---|---|---|
-| LESSON-056-00 | 未检到 FEAT-056 专项历史记录 | 把“Bean 存在、配置注入或静态文件”误当成扩展生效 | 全部 | C01～C31 | 每项必须有对象级调用计数、实际事件、协议响应或失败原文 |
+| LESSON-056-00 | 未检到 FEAT-056 专项历史记录 | 把“Bean 存在、配置注入或静态文件”误当成扩展生效 | 全部 | C01～C47（含评审新增；C24 退休由 C32 替代） | 每项必须有对象级调用计数、实际事件、协议响应或失败原文 |
 | LESSON-031-01 | 判定权与被判定方同源，测试侧自造期望自证 | FEAT-056 只证明自定义器和 Rail 类存在，未证明真实入口执行 | 外部锚 | C02、C12、C13、C26、C30 | 真实 A2A/SSE、真实 MOA 执行、外部工具返回值或产物哈希 |
-| LESSON-031-02 | 前置检查、装配检查被计入覆盖并报 PASS | 薄 JAR 构建成功、Bean 数正确被误当扩展生效 | 执行链 | C01、C02、C03、C04、C25 | 必须给出首次执行前后调用增量，并做断言敏感性反证 |
+| LESSON-031-02 | 前置检查、装配检查被计入覆盖并报 PASS | 薄 JAR 构建成功、Bean 数正确被误当扩展生效 | 执行链 | C01、C02、C03、C04、C25 | 必须给出首次执行前后调用增量，并做断言敏感性反证（反证落点统一由 C25/C40～C44 mutation-control 用例承接，交叉引用见 §6 反证卡与 TestPlan §8 control 说明） |
 | LESSON-031-03 | 真实文件只证明来源，不代表真实使用和组合位置 | 样例有 Rail 但不在目标执行链；动态 Tool/请求 Rail 未组合 | 组合/Nesting | C10、C11、C12、C14、C26、C28 | 组合位置、对象身份、动态安装后事件和请求前后增量 |
 | LESSON-031-04 | 中间输出可满足弱断言，目标终点未证明 | 自定义器执行过一次就报 PASS，但新增 Rail 未触发 | 结果归属 | C12、C13、C15、C25 | 新 Rail 唯一 canary 必须来自目标 callback，且撤掉注册后主断言失败 |
 | LESSON-031-05 | blocked/degraded 静默成为正常收口 | C18/C22/C24 曾因未决 Oracle 保留欠账 | 已闭环 | C18、C22、C24 | C18/C22 已执行 PASS，C24 退休并由 C32 替代；覆盖台账无 degraded |
@@ -155,15 +167,24 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 
 先单独构建 `deepagent-a-library`，记录普通 JAR SHA-256；再只依赖已安装的原库构建 `customer-agent-runtime`，记录可执行 JAR。启动后通过 A2A 发送真实模型请求，触发原 Tool、新增 Tool 和客户 Rail。请求完成后检查原 Rail/新增 Rail 的 `init/uninit` 和工厂 `destroy`。
 
+- 判定要点与用例映射：承接 C01/C02（哈希与打包）、C12/C13（Rail/Tool）、C14/C15（释放），判定=承接用例全部 PASS + 包内原 JAR SHA-256 与独立构建值一致；真实模型按 §8 固定 prompt + 唯一 canary 执行，语义弱断言不计 PASS；`uninit/destroy` 触发时机=请求完成后的对象释放契约（C15 为证据载体）。
+
 ### E2E-2 两个二开方
 
 用同一原库产物构建两个宿主变体，分别注册不同 Rail/Tool。两个应用都要启动成功；原库 SHA-256 必须完全相同；两个行为结果必须不同。
+
+- 判定要点与用例映射：承接 C02（同库异包）与 C31（来源保真），判定=两应用启动成功 + 原库哈希一致 + 行为 canary 互异。
 
 ### E2E-3 Hosted 多 Agent
 
 通用 Hosted 宿主注册 `order-agent` 与 `support-agent`，两者使用相同 conversation ID 分别调用。回调账本必须出现各自的注册名，只匹配 `order-agent` 的扩展在 `support-agent` 上调用次数为 0。
 
+- 判定要点与用例映射：承接 C07/C08（注册名与定向）与 C43（串用反证），判定=回调注册名互异 + 交叉调用计数为 0。
+
 ## 6. 详细用例
+
+> 包名与层次映射约定：自动化落点包段 `cases/component/feat056`=component 层、`cases/integration/feat056`=integration 层、`cases/e2e/feat056`=e2e 层；场景卡「测试层次」标注执行时实际驱动的层次/维度（如 `package`、`E2E`、`process`、`log contract`、`mutation control`），与包路径不一致处属同一用例多层执行或维度补充，覆盖统计按用例 ID 去重。
+> 场景卡字段裁剪规则：反证/组件夹具/真实链路卡按场景类型裁剪字段（如反证卡省略「配置生效/下游触达证据」），裁剪属格式约定而非缺漏；`归因记录` 本轮统一标注「本轮无待归因项」。
 
 ### FEAT-056-C01：Library JAR 交付边界
 
@@ -175,13 +196,13 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - Given：Library 工程已构建为普通 JAR，依赖中包含 Handler/Rail/Tool 但无启动类。
 - When：直接尝试按可执行 JAR 启动；另将 JAR 作为依赖装配到最小宿主。
 - Then：直接启动不能提供 Agent 服务；最小宿主可载入库内配置并启动。
-- PASS：两个条件都成立，产物结构与启动结果一致。
+- PASS：库 JAR 结构断言全部成立——无 `BOOT-INF/` 与 Boot loader 类、含业务配置类与 manifest（本用例自动化为结构级校验，不做进程级启动断言）；启动路径行为由 C02/C23 部署链路承接。
 - FAIL：Library 自带可用启动入口，或最小宿主无法装配库内 Handler/配置。
 - INCONCLUSIVE：构建成功但未实际启动宿主，或缺依赖导致无法区分产品与构建问题。
 - 配置生效/下游触达证据：JAR 内容清单、jar manifest、宿主启动日志、Handler 就绪状态。
 - 调用增量与唯一数据：使用本轮唯一 application name 与端口。
 - 不应断言：不以 Maven 模块类型名代替实际可启动性。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerPackagingContractTest#libraryJarIsPlainLibraryWithoutBootLoader`。
 
 ### FEAT-056-C02：两应用使用同版原库且原 JAR 不变
@@ -200,7 +221,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：两次构建日志、JAR SHA-256、两个 A2A/REST 行为响应。
 - 调用增量与唯一数据：两个应用使用不同端口与测试数据。
 - 不应断言：不要求整个可执行 JAR 字节相同。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerPackagingContractTest#bothAppsEmbedTheSameUnchangedLibraryJar`。
 
 ### FEAT-056-C03：零自定义器兼容
@@ -212,14 +233,14 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - Oracle 来源：FRS FR-03/AC-03
 - Given：应用不注册 `AgentInstanceCustomizer`。
 - When：启动应用并执行同步、流式原能力。
-- Then：不要求业务 ID，不提前因自定义器初始化 Agent；原行为和原响应保持。
+- Then：不要求业务 ID，不提前因自定义器初始化 Agent；原行为和原响应保持（原行为基线=未装配自定义器的对照宿主同输入响应；真实链路基线由 C36 `VERIFY_CUSTOMIZER_MODE=none` 承接，组件层以无调用账本 + 原能力响应为基线证据）。
 - PASS：请求成功且不存在自定义器调用记录。
 - FAIL：缺 ID 导致启动失败，或无 Bean 时仍进入扩展初始化。
 - INCONCLUSIVE：只检查 Bean 数，没有执行原能力。
 - 配置生效/下游触达证据：启动上下文、请求响应、无调用账本。
 - 调用增量与唯一数据：同一 conversation 顺序请求两次。
 - 不应断言：不能把“没有编译错误”当兼容。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#zeroCustomizersDoNotRequireBusinessAgentId`。
 
 ### FEAT-056-C04：单/多自定义器顺序
@@ -230,7 +251,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 测试层次：integration
 - Oracle 来源：FRS FR-03/FR-05/AC-03/AC-05
 - Given：分别配置一个、两个带 `@Order` 的自定义器，记录调用顺序和对象身份。
-- When：启动 singleton 或创建任务对象。
+- When：启动 singleton 宿主（本用例自动化落点覆盖 singleton 路径的顺序断言）；per-task 路径的扩展次数与身份由 C10/C38 按其对象创建契约承接，不在本用例重复断言顺序。
 - Then：一个 Bean 正常调用；多个 Bean 按 Spring 顺序调用，回调收到相同 ID 和同一实际对象。
 - PASS：顺序、次数、对象身份均符合合同。
 - FAIL：顺序错误、对象串用或多调/漏调。
@@ -238,7 +259,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：有序回调账本、对象 identity/hash、Rail 注册结果。
 - 调用增量与唯一数据：使用独立宿主 application context。
 - 不应断言：自定义器顺序不等于 Rail priority。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#orderedCustomizersRunInOrderAndInitializeTheSingletonOnce`。
 
 ### FEAT-056-C05：自定义器失败停止后续调用
@@ -257,7 +278,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：异常原文、两个回调计数、入口拒绝记录。
 - 调用增量与唯一数据：失败标记使用唯一 token。
 - 不应断言：不验证外部副作用已回滚。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#laterCustomizerIsNotCalledWhenEarlierCustomizerFails`。
 
 ### FEAT-056-C06：非托管 ID 与请求 metadata 隔离
@@ -276,7 +297,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：配置键存在性、请求原文、回调账本。
 - 调用增量与唯一数据：伪造值使用唯一 canary。
 - 不应断言：不把 Core card ID 等于业务 ID 当合同。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#requestMetadataCannotOverrideBusinessAgentId`。
 
 ### FEAT-056-C07：单成员 Hosted ID
@@ -295,7 +316,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：Hosted 清单、全局配置、回调账本、响应。
 - 调用增量与唯一数据：solo application 独立端口。
 - 不应断言：不扩展到多进程寻址。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerHostedContractTest#singleHostedMemberUsesEntryIdInsteadOfGlobalServiceId`。
 
 ### FEAT-056-C08：双成员 Hosted 同 conversation 定向
@@ -314,7 +335,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：两个响应、两份回调账本、Manager identity、路由日志。
 - 调用增量与唯一数据：同一 conversation 是刻意复用，请求 message ID 唯一。
 - 不应断言：不要求不同 Agent 的 conversation state 合并。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerHostedContractTest#dualHostedMembersReceiveTheirOwnEntryIds`。
 
 ### FEAT-056-C09：singleton 每对象一次并持续生效
@@ -333,7 +354,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：start 次数、回调计数、Rail init/事件计数、多次响应。
 - 调用增量与唯一数据：不同请求 message ID，同一对象身份。
 - 不应断言：不验收同对象并发执行。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#externalRailIsRegisteredOnceAndFiresOnRepeatedRequests`。
 
 ### FEAT-056-C10：非托管 per-task 新对象覆盖
@@ -352,7 +373,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：工厂 create/destroy 计数、对象 identity、回调账本、A/B 响应。
 - 调用增量与唯一数据：A/B 使用唯一 conversation。
 - 不应断言：本 case 不单独证明不同 conversation 的并发初始化能力；该能力由 C32 覆盖。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#perTaskObjectsAreInitializedBeforePublication`。
 
 ### FEAT-056-C11：Hosted 默认 Agent 显式 per-task
@@ -371,7 +392,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：Hosted 配置、两个 create/destroy 记录、回调账本、另一成员请求。
 - 调用增量与唯一数据：两个默认任务 ID 唯一，另一成员共享 conversation 不影响结果。
 - 不应断言：不验收非默认 Agent per-task OUT。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerHostedContractTest#hostedDefaultAgentUsesItsExplicitTaskFactory`。
 
 ### FEAT-056-C12：Rail 共存与工具事件筛选
@@ -390,8 +411,8 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：工具执行日志、原/新 Rail 事件、toolCallId。
 - 调用增量与唯一数据：每次调用唯一 toolCallId。
 - 不应断言：不依赖模型“是否选择”目标工具；执行请求必须可确定触发。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
-- 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerOfficialExampleTest#officialExampleRailCoexistenceAndPrivateToolIsolation`。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
+- 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerOfficialExampleTest#officialExampleRailCoexistenceAndPrivateToolIsolation`（与 C13 共用同一方法：一个官方示例流程内按断言组区分，C12=Rail 筛选事件组、C13=私有 Tool 资源组；失败按断言组归因）
 
 ### FEAT-056-C13：私有 Tool 资源隔离
 
@@ -409,7 +430,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：返回值 canary、ResourceMgr 日志、Ability 列表、destroy 后调用。
 - 调用增量与唯一数据：每个实例唯一资源 ID 和 canary。
 - 不应断言：不根据 LLM 选中概率。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerOfficialExampleTest#officialExampleRailCoexistenceAndPrivateToolIsolation`。
 
 ### FEAT-056-C14：共享 Tool 所有权释放
@@ -420,15 +441,15 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 测试层次：integration
 - Oracle 来源：FRS FR-07/AC-07；L2 §2.3/§3.4
 - Given：两实例注册相同 ToolCard ID、等价声明和线程安全共享实现。
-- When：两实例被执行/登记后，依次释放其中一个和最后一个。
+- When：两实例完成工具登记（所有权计数在登记时建立，与是否执行解耦）后，依次释放其中一个和最后一个。
 - Then：释放一个后资源仍被另一个解析；最后一个释放后全局条目移除。
-- PASS：所有权计数和解析结果符合 Core 合同。
+- PASS：共享工具在两实例释放过程中行为符合 Core 合同——释放其一后共享实现仍可解析（返回原结果），最后一个释放后全局条目移除（`getTool` 为空）且两实例私有工具同步移除；具体断言组见落点注记（与 C15 共用方法），不以未经实现的计数器读数表述。
 - FAIL：首个释放移除全局资源，或最后一个释放后仍残留。
 - INCONCLUSIVE：只看卡片可见，不检查所有权/解析。
 - 配置生效/下游触达证据：ResourceMgr 所有权日志、两次显式调用、最终资源查询。
 - 调用增量与唯一数据：共享资源 ID 固定，实例 canary 唯一。
 - 不应断言：不假设 Java 函数实现等价由框架自动比较。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerCoreOwnershipTest#privateAndSharedToolsFollowOwnershipAcrossInstanceRelease`。
 
 ### FEAT-056-C15：对象释放互不影响
@@ -442,12 +463,13 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - When：按原工厂/所有者契约释放 A，再执行 B。
 - Then：A `uninit` 和销毁契约触发，B Rail/Tool 正常；不通过再次运行 A 证明清理。
 - PASS：A 清理记录 + B 新 canary 请求成功。
+- 断言分组说明：与 C14 共用 `AgentInstanceCustomizerCoreOwnershipTest#privateAndSharedToolsFollowOwnershipAcrossInstanceRelease`（C14=所有权计数与解析组、C15=释放隔离组）；失败按断言组归因。
 - FAIL：A 残留回调、B 被误清理或 B 请求失败。
 - INCONCLUSIVE：只检查 destroy 被调用，不观察回调残留或 B。
 - 配置生效/下游触达证据：init/uninit 计数、destroy 次数、B 响应、全局回调残留查询（若公开）。
 - 调用增量与唯一数据：B canary 在 A 释放后生成。
 - 不应断言：不要求自动删除持久化 checkpoint。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerCoreOwnershipTest#privateAndSharedToolsFollowOwnershipAcrossInstanceRelease`。
 
 ### FEAT-056-C16：不支持对象类型先失败
@@ -466,7 +488,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：异常原文、回调计数、执行入口结果。
 - 调用增量与唯一数据：每类错误独立对象。
 - 不应断言：不定义新的网络错误码。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#unsupportedAgentFailsBeforeAnyCustomizerRuns`。
 
 ### FEAT-056-C17：非托管启动期失败
@@ -485,7 +507,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：进程退出码/上下文异常、初始化计数、入口异常。
 - 调用增量与唯一数据：独立 application context。
 - 不应断言：不要求失败进程仍可提供查询端点。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#singletonFailureRejectsExecutionAndDoesNotRetryInitialization`。
 
 ### FEAT-056-C18：Hosted 启动失败与回滚
@@ -504,7 +526,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：Hosted 启停日志、资源 start/stop、进程结果。
 - 调用增量与唯一数据：失败成员 canary 唯一。
 - 不应断言：不凭“进程退出”单独断言所有业务副作用均已回滚；验收依据是 Hosted 启停事件、资源清理和进程结果。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerHostedRealChainTest#hostedStartupFailureRollsBackAndPublishesNoPartialSet`。
 
 ### FEAT-056-C19：per-task 初始化失败清理
@@ -523,7 +545,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：工厂 create/destroy 计数、回调账本、异常、B canary。
 - 调用增量与唯一数据：A 失败 canary、B 成功 canary。
 - 不应断言：不要求复用失败 Task ID。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#failedCustomizationStopsTheChainAndDestroysTheUnpublishedObject`。
 
 ### FEAT-056-C20：per-task 清理失败不掩盖原错误
@@ -542,7 +564,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：异常对象 identity、suppressed、manager 状态、后续 acquire。
 - 调用增量与唯一数据：E1/E2 使用唯一 message 但不输出敏感值。
 - 不应断言：不要求具体异常类型之外的统一错误码。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#cleanupFailureDoesNotOverrideThePrimaryInitializationFailure`。
 
 ### FEAT-056-C21：护栏 priority 显式检查与合规共存
@@ -561,7 +583,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：guardrail enabled 状态、显式 priority、真实工具调用与审计结果。
 - 调用增量与唯一数据：合规 Rail 使用唯一 canary。
 - 不应断言：不要求覆盖所有内层直接注册的越界 Rail，也不把安装成功当作合规证明。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerGuardrailContractTest#compliantBusinessRailCoexistsAndItsPriorityIsCheckedExplicitly`。
 
 ### FEAT-056-C22：Hosted 启停日志字段完整、回滚可识别且不泄露敏感信息
@@ -580,7 +602,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：真实 `HostedLifecycleCoordinator`、三组宿主事件、ILoggingEvent 级别/ThrowableProxy 和 canary 搜索结果。
 - 调用增量与唯一数据：敏感 canary 仅进入异常 message，不进入允许日志字段。
 - 不应断言：不把 `type` 当完整异常链，不要求程序内异常对象丢失 message，不要求未调用操作产生 success。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerHostedContractTest#hostedLifecycleLogsExposeRequiredFieldsAndHideSensitiveMessage`。
 
 ### FEAT-056-C23：重建生效且无旁挂/热加载
@@ -593,18 +615,20 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - Given：二开应用包含扩展并正常运行。
 - When：修改扩展、重建可执行应用并重启；另尝试只替换部署目录旁的普通 JAR 后重启。
 - Then：重建后的新行为生效；原库不需要重发；旁挂 JAR 不生效。
-- PASS：两次启动行为与产物内容一致。
+- PASS：重建后新扩展 canary 可见且构建清单含新扩展构件；旁挂 JAR 重启后 canary 不可见且行为与原产物一致。
 - FAIL：不重建也热加载，或重建后仍执行旧扩展，或要求改原库。
 - INCONCLUSIVE：只构建未运行。
 - 配置生效/下游触达证据：应用构建清单、启动日志、行为 canary。
 - 调用增量与唯一数据：新扩展使用 canary。
 - 不应断言：不要求运行中热替换。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerPackagingContractTest#rebuildChangesOnlyOuterApplicationJarAndSiblingJarStaysOutside`。
 
 ### FEAT-056-C32：不同 conversation 的任务对象并发初始化（替代 C24）
 
 > C24（"业务工厂串行创建、最大并发 1"）在 PR 292 后已不再是需求：新口径要求 Runtime-ext 不额外串行化，不同 conversation 的任务对象可以并发初始化和执行。C24 的断言作为"业务自选串行"的探针保留在组件测试里，但不再计入本需求覆盖。
+>
+> 字段裁剪说明：C32 的证据以并发时间线（栅栏两侧时间戳）与唯一 conversation ID 为核心字段，配置生效/调用增量等字段并入 Given/When 表述；唯一数据=两个 conversation ID 各自唯一。
 
 - 可执行性/优先级：`runnable / P0`
 - 验证形态：`execution`
@@ -636,8 +660,8 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：mutation diff、每族失败断言语义、原始 XML。
 - 调用增量与唯一数据：注入故障使用唯一标识，不复用正确路径数据。
 - 不应断言：control case 不计入产品能力 covered。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
-- 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#missingRegistrationCannotSatisfyTheRailCanaryOracle`。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
+- 自动化落点（四类故障的注入落点，全部已实现并执行）：`AgentInstanceCustomizerMutationControlTest` 的 5 个 oracle 方法（customizerCall/railCanary/toolRegistration/hostedEntryId/destroyOracle，一一承接 C40～C44）+ `AgentInstanceCustomizerContractTest#missingRegistrationCannotSatisfyTheRailCanaryOracle`；mutation diff 与每族失败断言语义见各反证卡与 surefire 留证。
 
 ### FEAT-056-C26：动态能力 Rail 组合位置
 
@@ -655,7 +679,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：安装前后工具清单、真实请求、Rail 事件、toolCallId。
 - 调用增量与唯一数据：动态 Tool 使用唯一 canary。
 - 不应断言：初始化时动态工具必须存在；设计明确不要求。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerCoreOwnershipTest#railRegisteredBeforeDynamicToolStillObservesLateTool`。
 
 ### FEAT-056-C27：部分注册失败后的回滚
@@ -676,8 +700,8 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：注册/注销计数、ResourceMgr 归属、后续对象 canary、原异常。
 - 调用增量与唯一数据：失败对象和后续对象资源 ID 唯一。
 - 不应断言：不要求通用事务回滚外部副作用；只验证受管 callback/资源。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
-- 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#failedPerTaskCustomizationDestroysObjectAndRemovesPartialRail`。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
+- 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#failedPerTaskCustomizationDestroysObjectAndRemovesPartialRail`（覆盖 per-task 注入）。singleton 清理路径无独立注入落点：其口径为设计边界核对（L2 §3.4——Runtime 不接管 singleton 清理），由 C33（真实链路初始化失败不退出、原错误保留）与部署重启行为间接验证，在此登记承接关系，不设独立 mutation 用例。
 
 ### FEAT-056-C28：对象级 Rail 与请求级 Rail 共存
 
@@ -695,7 +719,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：两轮事件序列、请求 Rail 计数、对象 identity。
 - 调用增量与唯一数据：两轮使用独立 request canary 和同一对象身份。
 - 不应断言：不要求同对象并发执行。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerCoreOwnershipTest#objectRailSurvivesRequestScopedRailBindingAndClose`。
 
 ### FEAT-056-C29：同 conversation 并发首建
@@ -714,7 +738,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：并发时间线、factory 调用计数、busy code、对象映射。
 - 调用增量与唯一数据：conversation ID 唯一，create 阻塞点受控。
 - 不应断言：本 case 只验证同 conversation 并发首建准入；不同 conversation 的并发能力由 C32 单独验证。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerContractTest#concurrentFirstAcquireRejectsTheSameConversationAndAllowsAnother`。
 
 ### FEAT-056-C30：真实 MOA 兼容性旁证（非门禁）
@@ -722,19 +746,19 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 可执行性/优先级：`runnable / 旁证（11-16 复审裁定：与 TestPlan 正文口径统一，不作为门禁）`
 - 验证形态：`execution`
 - 适用 SUT：MOA 普通库 JAR 形态（`agent-solution origin/common@286184389`，spring-boot repackage 同时产出普通库 JAR + exec 包；历史执行锚 `origin/0.1.1@b67d8a66`）
-- 执行状态：`0.1.1` 锚已执行 PASS（2026-10-12，`evidence/runs/feat056-c30-20261012-1527/`）；`common@286184389` 锚**待复跑**（11-13 锚点迁移后尚未获得新执行证据）
+- 执行状态：两锚均 PASS——`0.1.1` 锚（2026-10-12，`99-Archive/20261030-design-batches/20261012/FEAT-056/evidence/runs/feat056-c30-20261012-1527/`）；`common@286184389` 锚复跑 PASS（2026-11-24，宿主 jar=solution PR !1199 `04fe0e28ae` 构建，run=`_agent/20261124_FEAT056_rerun/evidence/runs/feat056-integration-20261124-1711/`）
 - 测试层次：integration + E2E
 - Oracle 来源：开发/用户确认“通用能力”；MOA 源 revision：历史 `b67d8a66`（0.1.1，已执行）、现行 `286184389`（common，待复跑）
 - Given：从官方 MOA 源构建零业务源码修改的薄 JAR，外部宿主增加 canary customizer/Rail。
 - When：通过真实 MOA Agent 的公开入口执行一次；Rail 在 `beforeInvoke` 发出唯一 canary 并完成请求。
 - Then：MOA 原源码无业务改动，外部 Rail 在真实 MOA 执行链中触发，公开响应/流事件可见 canary。
-- PASS：MOA 源 diff 只有允许的测试构建包装或无修改；canary 来自真实执行链。
+- PASS：MOA 源 diff 为零修改，或仅命中允许的测试构建包装白名单（=pom 构建包装：spring-boot repackage/profile、packaging 声明；白名单外 `src/main/java` 与业务 `application.yml` 必须零差异；判定命令=`git diff <锚> --stat -- src/main/java src/main/resources` 输出为空）；canary 来自真实执行链。
 - FAIL：只能证明测试自造 DeepAgent，无法在没有改写 MOA 主源码的情况下触发。
 - INCONCLUSIVE：MOA 依赖或打包无法在零业务源码修改下接入；记录具体缺口，不让通用示例 PASS 冒充 MOA 锚。
-- 配置生效/下游触达证据：源 revision、diff、薄 JAR 哈希、启动日志、协议/i流 canary。
+- 配置生效/下游触达证据：源 revision、diff、薄 JAR 哈希、启动日志、协议/流事件 canary。
 - 调用增量与唯一数据：MOA conversation 与 canary 唯一。
 - 不应断言：不验收 MOA 自身业务质量，也不要求官方提供 Library JAR。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerMoaAnchorTest#moaExternalCustomizerRailFiresInRealExecutionChain`。
 
 ### FEAT-056-C31：官方示例来源保真
@@ -753,7 +777,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：commit、文件 SHA-256、jar 内容、启动类映射、日志。
 - 调用增量与唯一数据：使用本轮唯一 version/build ID。
 - 不应断言：不证明官方示例等同生产 MOA。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerPackagingContractTest#officialExampleProvenanceMatchesTheExecutedArtifacts`。
 
 ### FEAT-056-C33：`init-fail-fast=false` 下非托管初始化失败不退出进程
@@ -779,7 +803,8 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 适用 SUT：同 C33，但不设 `init-fail-fast`（默认 true）
 - 测试层次：integration + process
 - Oracle 来源：FRS FR-14/AC-14a（PR312 冻结口径）
-- Given/When：同上。
+- Given：非托管复用对象自定义器抛错；`openjiuwen.service.lifecycle.init-fail-fast` 保持默认（不显式设置，等效 true）。
+- When：启动宿主（不发业务请求），等待进程退出。
 - Then：进程非零退出；日志含 `(init-fail-fast=true)`、`Application run failed`，cause 为自定义器异常；后续自定义器未被调用。
 - PASS：退出码非零 + 上述日志齐全。
 - FAIL：进程仍存活，或失败对象被执行。
@@ -841,7 +866,8 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - Given：两个不同 conversation。
 - When：顺序各发一次请求。
 - Then：两个任务对象各自扩展一次、实例互不相同、各自 Rail 触发、各自 destroy 且回调注销。
-- PASS：计数与实例身份均符合。
+- PASS：扩展安装次数=2（每对象 1 次）、两实例身份互不相同、Rail beforeInvoke 各触发 1 次、两次请求均完成；判据只读本轮文件日志（不读控制台）。
+- 不应断言：本用例不断言 destroy 次数与回调注销计数——释放语义由 C19/C35（工厂 destroy）与 C44（destroy oracle mutation）承接，回调注销由 C14/C15（callback 注销断言）承接。
 - FAIL：实例复用/串用，或 Rail 未随对象释放注销。
 - INCONCLUSIVE：无法区分两份日志导致重复计数（本项已因该原因假失败过一次，判据须只读文件日志）。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerHostedRealChainTest#perTaskObjectsGetSeparateExtensionsAndReleaseIsolation`。
@@ -856,7 +882,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - Given：只给默认成员显式配对 `AgentInstanceManager`。
 - When：向默认入口 `/a2a` 连发两次请求。
 - Then：两次各创建新对象并各自扩展（实例互不相同）；非默认成员仍按自身形态启用。
-- PASS：两次安装 + 两个不同按任务实例。
+- PASS：两次安装 + 两个不同按任务实例；且非默认成员以 Hosted 托管形态就绪可观测（`Hosted agent agentId=agent-b operation=start result=success` 日志出现，未经 per-task 工厂）。
 - FAIL：复用同一实例、或靠全局 Bean 自动切换模式。
 - INCONCLUSIVE：只发一次请求。
 - 自动化落点：`com.huawei.ascend.sit.cases.integration.feat056.AgentInstanceCustomizerHostedRealChainTest#hostedDefaultAgentPerTaskCustomizationOnRealChain`。
@@ -943,16 +969,16 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 适用 SUT：启用 Tool Guardrail 的 DeepAgent 宿主
 - 测试层次：component（请求期安装点传播链路；真实链路集成层扩展待环境具备）
 - Oracle 来源：FEAT §4「请求期护栏失败」；L2 C11「护栏安装实际抛错时该请求失败、不降级」；设计评审意见 2026-11-13
-- Given：对象已完成全部自定义器扩展并初始化成功；宿主启用工具护栏；注入使既有护栏安装抛错的条件。
+- Given：对象已完成全部自定义器扩展并初始化成功；宿主启用工具护栏；注入载体=故障注入自定义器夹具的护栏安装抛错模式（`AgentInstanceCustomizerGuardrailFailureTest` 夹具，见 §7「故障注入自定义器」行），使既有护栏安装路径抛出指定异常。
 - When：提交一次工具调用请求。
 - Then：本次请求失败；业务工具一次都未执行；不存在绕过护栏的重试或无护栏降级执行；对象自身扩展状态不因该次失败被重置。
-- PASS：请求以明确错误终态结束、工具调用计数增量为 0、无无护栏放行记录。
+- PASS：请求以明确错误终态结束、工具调用计数增量为 0、无无护栏放行记录；且对象扩展状态未被重置（观测=原工具资源在 ResourceMgr 中仍可解析，测试以 `getTool` 非空断言，非二次请求）。
 - FAIL：请求成功返回、工具被执行，或出现无护栏重试。
 - INCONCLUSIVE：无法区分「安装未抛错」与「安装抛错被吞掉」时。
 - 配置生效/下游触达证据：护栏安装错误日志、错误终态响应、工具执行计数。
 - 调用增量与唯一数据：每请求唯一 conversation/task；工具 canary 计数。
 - 不应断言：不要求覆盖所有护栏类型；不把对象重新初始化当成必要行为。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerGuardrailFailureTest#requestPhaseGuardrailInstallFailureFailsWithoutDowngrade`（2026-11-13 实现并执行 PASS）。
 
 ### FEAT-056-C46：同一 Agent 新增同名 Tool 不替换原 Tool
@@ -971,7 +997,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：两处理器各自 canary、调用计数、资源归属记录。
 - 调用增量与唯一数据：每次调用唯一 toolCallId；两 canary 唯一。
 - 不应断言：不依赖模型选择概率；显式调用必须确定触发。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerToolIdentityTest#sameNameToolDoesNotReplaceOriginalTool`（2026-11-13 实现并执行 PASS）。
 
 ### FEAT-056-C47：同资源 ID——相同声明复用原处理器；显式声明冲突拒绝且原工具仍可用
@@ -992,27 +1018,28 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 配置生效/下游触达证据：注册异常、ResourceMgr 归属记录、原工具 canary、AbilityManager 名字表。
 - 调用增量与唯一数据：原工具唯一 canary；资源 ID 固定。
 - 不应断言：不承诺具体错误码字符串；不把处理器实例差异当作冲突依据（sameAbilityDeclaration 不比较处理器）。
-- 归因记录：候选解释 → 排除依据 → 未排除项。
+- 归因记录：本轮无待归因项（口径见 §10；出现负结论时按 §10 登记候选解释→排除依据→未排除项）。
 - 自动化落点：`com.huawei.ascend.sit.cases.component.feat056.AgentInstanceCustomizerToolIdentityTest#conflictingResourceIdRegistrationFailsAndOriginalRemainsUsable`（2026-11-16 精确化后执行 PASS）。
 ## 7. Fixture、环境与执行状态
 
 | Fixture / 环境 | 用途 | 实现与执行状态 |
 |---|---|---|
 | 测试专用 Library 与第二宿主 | AC-01/02 的同版原库、不同扩展和原 JAR 哈希 | 已实现；C01/C02/C23/C31 均执行 PASS |
-| Hosted 单/双成员测试宿主 | AC-04/09b/10/14b/16 | 已实现于 `agentcore-instance-customizer-verify-demo`；PR #823 |
+| Hosted 单/双成员测试宿主 | AC-04/09b/10/14b/16 | 已实现于 `agentcore-instance-customizer-verify-demo`；solution MR !823 已合入（head `a73098489`，2026-11-24 核验），随上游 common 分发 |
 | 故障注入自定义器 | 类型、顺序、destroy、priority、日志和失败回滚 | 已实现；组件与真实链路均执行 |
-| Guardrail 启用夹具 | AC-12a/b 的合规 priority 与护栏共存 | 已实现；内层越界 Rail 按设计不作为自动拒绝承诺 |
+| Guardrail 启用夹具 | AC-12a/b 的合规 priority 与护栏共存；C45 请求期护栏安装失败的注入载体（安装路径抛错模式） | 已实现；内层越界 Rail 按设计不作为自动拒绝承诺 |
 | 真实 DeepSeek / MOA 环境 | 官方示例真实模型链路和 MOA `0.1.1` 外部锚 | 已执行；权威运行 0 skipped |
 
 ## 8. 自动化落点与执行结果
 
 - 测试仓：`agent-runtime-acceptance`，分支最终以 `main@0f4aca5` 为准（以下"47 PASS"结论仅对该冻结基线成立，不代表 10-16 之后的基线；基线迁移后的执行记录见 2026-11-13/11-16 各轮）。
-- Fixture：`agent-solution` 的 `agentcore-instance-customizer-verify-demo`，PR #823 当前待合入。
+- 收口依据：冻结基线（main@0f4aca5）47 方法全量 PASS + 基线迁移后增量复跑——2026-11-16 组件层 8 类 34 条全 PASS（含 C45～C47）；2026-11-24 integration 层整体复跑 16/16 PASS（HostedRealChain 10、C30 锚 1、OfficialExample 1、Packaging 4；run=`_agent/20261124_FEAT056_rerun/evidence/runs/`，官方示例按 d4044eeb 重建 worktree 构建，customer-b/v2 重建后与当日 library 哈希一致）。
+- Fixture：`agent-solution` 的 `agentcore-instance-customizer-verify-demo`，MR !823 已合入（head `a73098489`，2026-11-24 核验）；fixture 获取方式=上游 `openJiuwen/agent-solution` common（含该 demo，锚见 TestPlan §3）。
 - `component`：Spring 装配、Hosted 生命周期、类型错误、destroy 双失败、并发初始化和 mutation 反证。
 - `integration`：真实 Runtime A2A、托管/非托管启停、Rail/Tool 隔离、打包来源、MOA 外部锚和官方示例。
 - 权威命令：`Run-Sit-Wsl-With-Llm.sh -Dtest='com.huawei.ascend.sit.cases.component.feat056.*Test,com.huawei.ascend.sit.cases.integration.feat056.*Test' test`。
 - 权威结果：47 PASS、0 failure、0 error、0 skipped；mutation 5 条另在独立 run 复跑 PASS。
-- 证据：`evidence/runs/feat056-acceptance-20261015-1033/` 与 `evidence/runs/feat056-acceptance-mutation-20261015-1042/`。
+- 证据：冻结基线 run=`99-Archive/20261030-design-batches/20261012/FEAT-056/evidence/runs/feat056-acceptance-20261015-1033/` 与 mutation run=`.../feat056-acceptance-mutation-20261015-1042/`；11-13 轮 C45～C47 surefire 留证=`_agent/20261113_FEAT056_PR378评审/evidence/surefire-20261113/`；11-16 精确回归轮 surefire XML=`_agent/20261113_FEAT056_PR378评审/evidence/surefire-20261116/`。
 
 ## 9. 状态汇总与退出标准
 
@@ -1020,6 +1047,7 @@ FEAT-031 复盘的直接教训是：前置检查、配置存在、测试侧自�
 - 逐行结论：27 covered + 5 out-of-scope，无 degraded/unassigned。
 - 验收门禁：`coverage_blocking=0`，`closure_eligible=True`，特性测试状态 `closed`。
 - 退出标准已满足：范围内条目均有本轮真实 XML 与行为证据，原 C18/C22/C24 缺口均已关闭。
+- 复跑记录：C30 现行锚 `common@286184389` 与 integration 层整体复跑已完成（2026-11-24，16/16 PASS，证据=`_agent/20261124_FEAT056_rerun/evidence/runs/`）；覆盖台账与证据路径已回填。
 - 2026-11-13 修订：评审新增 C45～C47（请求期护栏安装失败、同名 Tool 不替换、资源 ID 冲突注册）同日实现并执行 3/3 PASS（component 层，surefire XML 留证）；C47 先前由 C14 内嵌断言部分覆盖，随本修订升级为独立命名用例并精确回归。2026-11-16 复审：C47 冲突判据按 Core `sameAbilityDeclaration` 精确化（相同声明复用 + 显式 inputParams 冲突）并复跑 PASS；C30 调整为旁证非门禁（历史 0.1.1 锚执行记录保留，common@286184389 锚待复跑）；C27 按 singleton/per-task 拆分清理语义。收口状态由覆盖台账与测试报告统一更新，本节不改写 C01～C44 的既有结论。
 
 ## 10. 负结论归因记录
